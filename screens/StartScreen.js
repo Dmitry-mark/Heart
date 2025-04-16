@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,24 +6,73 @@ import {
   Image,
   Dimensions,
   TouchableOpacity,
-  Animated
+  Animated,
+  Alert
 } from 'react-native';
+import { Camera } from 'expo-camera';
+import { useNavigation } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 
 export default function Onboarding() {
-  // Ссылка на ScrollView для пролистывания
+  const navigation = useNavigation(); // Получаем навигацию
   const scrollViewRef = useRef(null);
-
-  // Animated.Value для отслеживания горизонтальной прокрутки
   const scrollX = useRef(new Animated.Value(0)).current;
 
-  // Функция для пролистывания к слайду с индексом "page"
+  // Текущее положение “страницы” обновляется по окончании анимации перелистывания
+  const [currentIndex, setCurrentIndex] = useState(0);
+  // Показ крестика на слайде 4 (индекс 3)
+  const [showClose, setShowClose] = useState(false);
+
+  // Функция программного перелистывания
   const scrollToPage = (page) => {
     if (scrollViewRef.current) {
       scrollViewRef.current.scrollTo({ x: width * page, animated: true });
     }
   };
+
+  // Функция запроса разрешения на использование камеры через expo‑camera  
+  // После запроса (независимо от результата) переходим на экран Main
+  const requestCameraPermission = async () => {
+    try {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      if (status === 'granted') {
+        console.log('Camera permission granted');
+      } else {
+        console.log('Camera permission not granted');
+        Alert.alert('Доступ к камере отклонён', 'Вы отклонили запрос на доступ к камере.');
+      }
+    } catch (error) {
+      console.error('Ошибка запроса разрешения камеры:', error);
+    }
+    navigation.replace('Main');
+  };
+
+  // Обновляем currentIndex по завершении анимации перелистывания
+  const handleMomentumScrollEnd = (event) => {
+    const index = Math.round(event.nativeEvent.contentOffset.x / width);
+    setCurrentIndex(index);
+  };
+
+  // Если зашли на слайд 4 (индекс 3) — через 3 секунды показываем крестик
+  useEffect(() => {
+    if (currentIndex === 3) {
+      setShowClose(false);
+      const timerId = setTimeout(() => {
+        setShowClose(true);
+      }, 3000);
+      return () => clearTimeout(timerId);
+    } else {
+      setShowClose(false);
+    }
+  }, [currentIndex]);
+
+  // Преобразуем scrollX так, чтобы пропустить неотображаемый слайд (индекс 3) в page control.
+  // При переходе: слайд 0 -> значение 0, слайд 1 -> 1, слайд 2 и 3 -> 2, слайд 4 -> 3.
+  const pageScrollX = scrollX.interpolate({
+    inputRange: [0, width, 2 * width, 3 * width, 4 * width],
+    outputRange: [0, 1, 2, 2, 3],
+  });
 
   return (
     <View style={styles.container}>
@@ -31,38 +80,35 @@ export default function Onboarding() {
         ref={scrollViewRef}
         horizontal
         pagingEnabled
+        scrollEnabled={false}  // Отключаем перелистывание свайпом
         showsHorizontalScrollIndicator={false}
         style={styles.scrollView}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { x: scrollX } } }],
           { useNativeDriver: false }
         )}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
         scrollEventThrottle={16}
       >
-        {/* ================== Слайд 1 ================== */}
+        {/* Слайд 1 (индекс 0) */}
         <View style={{ width }}>
           <View style={styles.redBackground}>
             <View style={styles.overlayContainer}>
-              {/* Вектор в левом верхнем углу */}
               <Image
                 source={require('../assets/WelcomeScreen/Vector22.png')}
                 style={styles.vectorImage}
                 resizeMode="contain"
               />
-              {/* Телефон (Frame) */}
               <Image
                 source={require('../assets/WelcomeScreen/Frame.png')}
                 style={styles.frameImage}
                 resizeMode="contain"
               />
-              {/* Сердце (Heart) */}
               <Image
                 source={require('../assets/WelcomeScreen/Heart.png')}
                 style={styles.heartImage}
                 resizeMode="contain"
               />
-
-              {/* Прямоугольник (Rectangle) снизу + текст + кнопка */}
               <View style={styles.rectangleContainer}>
                 <Image
                   source={require('../assets/WelcomeScreen/Rectangle.png')}
@@ -86,35 +132,30 @@ export default function Onboarding() {
           </View>
         </View>
 
-        {/* ================== Слайд 2 ================== */}
+        {/* Слайд 2 (индекс 1) */}
         <View style={{ width }}>
           <View style={styles.redBackground}>
             <View style={styles.overlayContainer}>
-              {/* Face в правом верхнем углу */}
               <Image
                 source={require('../assets/WelcomeScreen/face.png')}
                 style={styles.faceImage}
                 resizeMode="contain"
               />
-              {/* Smile (розовый смайлик) - слева над телефоном */}
               <Image
                 source={require('../assets/WelcomeScreen/Smile.png')}
                 style={styles.smileImage}
                 resizeMode="contain"
               />
-              {/* Второй смайлик - справа внизу */}
               <Image
                 source={require('../assets/WelcomeScreen/Smile2.png')}
                 style={styles.smileImage2}
                 resizeMode="contain"
               />
-              {/* Телефон (Frame2) */}
               <Image
                 source={require('../assets/WelcomeScreen/Frame2.png')}
                 style={styles.frameImage2}
                 resizeMode="contain"
               />
-              {/* Прямоугольник (Rectangle) снизу + текст + кнопка */}
               <View style={styles.rectangleContainer}>
                 <Image
                   source={require('../assets/WelcomeScreen/Rectangle.png')}
@@ -140,23 +181,20 @@ export default function Onboarding() {
           </View>
         </View>
 
-        {/* ================== Слайд 3 ================== */}
+        {/* Слайд 3 (индекс 2) */}
         <View style={{ width }}>
           <View style={styles.redBackground}>
             <View style={styles.overlayContainer}>
-              {/* Телефон (Frame3) */}
               <Image
                 source={require('../assets/WelcomeScreen/Frame3.png')}
                 style={styles.frameImage3}
                 resizeMode="contain"
               />
-               {/* Сердце (Heart) */}
-               <Image
+              <Image
                 source={require('../assets/WelcomeScreen/Heart.png')}
                 style={styles.heartImage}
                 resizeMode="contain"
               />
-              {/* Прямоугольник (Rectangle) снизу + текст + кнопка */}
               <View style={styles.rectangleContainer}>
                 <Image
                   source={require('../assets/WelcomeScreen/Rectangle.png')}
@@ -170,7 +208,87 @@ export default function Onboarding() {
                   </Text>
                   <TouchableOpacity
                     style={styles.continueButton3}
-                    onPress={() => {}}
+                    onPress={() => scrollToPage(3)}
+                  >
+                    <Text style={styles.continueButtonText}>Continue</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Слайд 4 (индекс 3, вне page control) */}
+        <View style={{ width }}>
+          <View style={styles.redBackground}>
+            <View style={styles.overlayContainer}>
+              <Image
+                source={require('../assets/WelcomeScreen/Frame4.png')}
+                style={styles.frameImage4}
+                resizeMode="contain"
+              />
+              <View style={styles.rectangleContainer}>
+                <Image
+                  source={require('../assets/WelcomeScreen/Rectangle.png')}
+                  style={styles.rectangleImage}
+                  resizeMode="stretch"
+                />
+                <View style={styles.textOnRectangle}>
+                  <Text style={styles.title4}>Track Heart Rate With No Limits</Text>
+                  <Text style={styles.trialTitle}>
+                    <Text style={styles.trialRedPart}>3 Days of Trial</Text>, then $6.99/week
+                  </Text>
+                  <View style={styles.autoRenewContainer}>
+                    <Text style={styles.autoRenewText}>
+                      Auto renewable. Cancel anytime
+                    </Text>
+                  </View>
+                  <TouchableOpacity style={styles.continueButton4} onPress={() => {}}>
+                    <Text style={styles.continueButtonText}>
+                      Start your 3 days trial{'\n'}for 6.99$ per week
+                    </Text>
+                  </TouchableOpacity>
+                  {showClose && (
+                    <TouchableOpacity
+                      style={styles.closeButton}
+                      onPress={() => scrollToPage(4)}
+                    >
+                      <Image
+                        source={require('../assets/WelcomeScreen/close.png')}
+                        style={styles.closeIcon}
+                        resizeMode="contain"
+                      />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Слайд 5 (индекс 4, снова в page control) */}
+        <View style={{ width }}>
+          <View style={styles.redBackground}>
+            <View style={styles.overlayContainer}>
+              <Image
+                source={require('../assets/WelcomeScreen/camera.png')}
+                style={styles.camera}
+                resizeMode="contain"
+              />
+              <View style={styles.rectangleContainer}>
+                <Image
+                  source={require('../assets/WelcomeScreen/Rectangle.png')}
+                  style={styles.rectangleImage}
+                  resizeMode="stretch"
+                />
+                <View style={styles.textOnRectangle}>
+                  <Text style={styles.bpmTitle5}>Camera</Text>
+                  <Text style={styles.bpmSubtitle}>
+                    For the application to work correctly, we need access to your device's camera.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.continueButton3}
+                    onPress={requestCameraPermission}
                   >
                     <Text style={styles.continueButtonText}>Continue</Text>
                   </TouchableOpacity>
@@ -181,49 +299,37 @@ export default function Onboarding() {
         </View>
       </Animated.ScrollView>
 
-      {/* ================== Page Control ================== */}
-      <View style={styles.pagination}>
-        {[0, 1, 2].map((_, i) => {
-          const inputRange = [(i - 1) * width, i * width, (i + 1) * width];
-
-          const dotWidth = scrollX.interpolate({
-            inputRange,
-            outputRange: [8, 30, 8],
-            extrapolate: 'clamp'
-          });
-
-          const dotColor = scrollX.interpolate({
-            inputRange,
-            outputRange: ['#cccccc', '#FF4656', '#cccccc'],
-            extrapolate: 'clamp'
-          });
-
-          return (
-            <Animated.View
-              key={`dot-${i}`}
-              style={[
-                styles.dot,
-                {
-                  width: dotWidth,
-                  backgroundColor: dotColor
-                }
-              ]}
-            />
-          );
-        })}
-      </View>
+       {/* Page Control: отображаем только если currentIndex не равен 3 (слайд 4) */}
+       {currentIndex !== 3 && (
+        <Animated.View style={styles.pagination}>
+          { [0, 1, 2, 3].map(i => {
+              const dotWidth = pageScrollX.interpolate({
+                inputRange: [i - 1, i, i + 1],
+                outputRange: [8, 30, 8],
+                extrapolate: 'clamp'
+              });
+              const dotColor = pageScrollX.interpolate({
+                inputRange: [i - 1, i, i + 1],
+                outputRange: ['#cccccc', '#FF4656', '#cccccc'],
+                extrapolate: 'clamp'
+              });
+              return (
+                <Animated.View
+                  key={`dot-${i}`}
+                  style={[styles.dot, { width: dotWidth, backgroundColor: dotColor }]}
+                />
+              );
+            })
+          }
+        </Animated.View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  /* ========== Общие стили ========== */
-  container: {
-    flex: 1
-  },
-  scrollView: {
-    flex: 1
-  },
+  container: { flex: 1 },
+  scrollView: { flex: 1 },
   redBackground: {
     flex: 1,
     backgroundColor: 'rgb(253, 68, 82)'
@@ -232,8 +338,28 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'relative'
   },
-
-  /* ========== Слайд 1 ========== */
+  slideTitle: {
+    fontSize: 24,
+    color: '#FFF',
+    marginBottom: 20,
+    alignSelf: 'center'
+  },
+  closeButton: {
+    position: 'absolute',
+    bottom: height * 0.81,
+    left: width * 0.05,
+    width: width * 0.12,
+    height: width * 0.12,
+    borderRadius: (width * 0.12) / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 11
+  },
+  closeIcon: {
+    width: '200%',
+    height: '200%',
+    resizeMode: 'contain'
+  },
   vectorImage: {
     position: 'absolute',
     top: height * 0.1,
@@ -262,8 +388,6 @@ const styles = StyleSheet.create({
     transform: [{ translateX: -40 }, { translateY: -40 }],
     zIndex: 3
   },
-
-  /* ========== Слайд 2 ========== */
   faceImage: {
     position: 'absolute',
     top: height * 0.06,
@@ -309,8 +433,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
-
-  /* ========== Слайд 3 ========== */
   frameImage3: {
     position: 'absolute',
     width: '100%',
@@ -328,8 +450,72 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
-
-  /* ========== Общие элементы (Rectangle, текст) ========== */
+  frameImage4: {
+    position: 'absolute',
+    bottom: '12%',
+    width: '100%',
+    height: undefined,
+    aspectRatio: 0.46,
+    zIndex: 1
+  },
+  title4: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#000',
+    textAlign: 'center',
+    marginBottom: 12
+  },
+  trialTitle: {
+    fontSize: 18,
+    color: '#000',
+    textAlign: 'center',
+    marginBottom: 8,
+    fontWeight: '600'
+  },
+  trialRedPart: {
+    color: '#FF4656',
+    fontWeight: 'bold'
+  },
+  autoRenewContainer: {
+    backgroundColor: 'rgba(255, 0, 0, 0.1)',
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    borderRadius: 16,
+    marginBottom: 16
+  },
+  autoRenewText: {
+    fontSize: 14,
+    color: '#FF4656',
+    textAlign: 'center'
+  },
+  continueButton4: {
+    top: '15%',
+    height: '35%',
+    width: '90%',
+    backgroundColor: '#FF4656',
+    borderRadius: 24,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  camera: {
+    position: 'absolute',
+    width: '100%',
+    top: '20%',
+    left: '9%',
+    transform: [
+      { translateX: -(width * 0.2) / 2 },
+      { translateY: -(width * 0.2) / 2 },
+      { scale: 1.3 }
+    ]
+  },
+  bpmTitle5: {
+    fontSize: 30,
+    fontWeight: 'bold',
+    color: 'rgb(253, 68, 82)',
+    marginBottom: 8,
+    textAlign: 'center'
+  },
   rectangleContainer: {
     position: 'absolute',
     bottom: 0,
@@ -375,10 +561,9 @@ const styles = StyleSheet.create({
   continueButtonText: {
     color: '#FFF',
     fontSize: 16,
-    fontWeight: 'bold'
+    fontWeight: 'bold',
+    textAlign: 'center'
   },
-
-  /* ========== Page Control (3 индикатора) ========== */
   pagination: {
     position: 'absolute',
     top: '65%',
