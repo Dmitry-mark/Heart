@@ -64,31 +64,31 @@ export default function Main() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* TOP HEADER */}
-        <View style={styles.topHeader}>
-          <Text style={styles.topHeaderTitle}>Favorite Heart Monitor</Text>
-        </View>
+    <ScrollView contentContainerStyle={{ paddingTop: CARD_PADDING, paddingBottom: 40 }}>
+      {/* TOP HEADER */}
+      <View style={styles.topHeader}>
+        <Text style={styles.topHeaderTitle}>Favorite Heart Monitor</Text>
+      </View>
 
-        {/* MOOD CARD */}
-        <View style={styles.card}>
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <View style={styles.iconWrapper}>
-                <Image
-                  source={EMOJI_OPTIONS[selected].icon}
-                  style={styles.headerIcon}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text style={styles.headerTitle}>Your condition</Text>
+      {/* MOOD CARD */}
+      <View style={[styles.card, { marginTop: CARD_PADDING }]}>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <View style={styles.iconWrapper}>
+              <Image
+                source={EMOJI_OPTIONS[selected].icon}
+                style={styles.headerIcon}
+                resizeMode="contain"
+              />
             </View>
-            <Image
-              source={require('../assets/Main/arrow.png')}
-              style={styles.headerArrow}
-              resizeMode="contain"
-            />
+            <Text style={styles.headerTitle}>Your condition</Text>
           </View>
+          <Image
+            source={require('../assets/Main/arrow.png')}
+            style={styles.headerArrow}
+            resizeMode="contain"
+          />
+        </View>
           <Text style={styles.subtitle}>How are you feeling today?</Text>
           <View style={styles.emojiRow}>
             {EMOJI_OPTIONS.map((opt, idx) => {
@@ -137,7 +137,7 @@ export default function Main() {
     showsHorizontalScrollIndicator={false}
     // добавляем padding-слева и справа, чтобы график начинался и заканчивался с отступом внутри карточки
     contentContainerStyle={{
-      right: '10%'
+      right: '2%'
     }}
     // сдвигаем начальную позицию прокрутки вправо на pillBarRadius,
     // чтоб сама «полезная зона» графика оказалась левее
