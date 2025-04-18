@@ -9,69 +9,68 @@ import {
   Animated,
   Alert
 } from 'react-native';
-import { Camera } from 'expo-camera';
+// Подключаем hook из expo-camera
+import { useCameraPermissions } from 'expo-camera';
 import { useNavigation } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 
 export default function Onboarding() {
-  const navigation = useNavigation(); // Получаем навигацию
+  const navigation = useNavigation();
   const scrollViewRef = useRef(null);
   const scrollX = useRef(new Animated.Value(0)).current;
 
-  // Текущее положение “страницы” обновляется по окончании анимации перелистывания
   const [currentIndex, setCurrentIndex] = useState(0);
-  // Показ крестика на слайде 4 (индекс 3)
   const [showClose, setShowClose] = useState(false);
 
-  // Функция программного перелистывания
-  const scrollToPage = (page) => {
-    if (scrollViewRef.current) {
-      scrollViewRef.current.scrollTo({ x: width * page, animated: true });
-    }
+  // Здесь хук отдаёт [permission, requestPermission]
+  const [permission, requestPermission] = useCameraPermissions();
+
+  const scrollToPage = page => {
+    scrollViewRef.current?.scrollTo({ x: width * page, animated: true });
   };
 
-  // Функция запроса разрешения на использование камеры через expo‑camera  
-  // После запроса (независимо от результата) переходим на экран Main
-  const requestCameraPermission = async () => {
-    try {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      if (status === 'granted') {
-        console.log('Camera permission granted');
-      } else {
-        console.log('Camera permission not granted');
-        Alert.alert('Доступ к камере отклонён', 'Вы отклонили запрос на доступ к камере.');
-      }
-    } catch (error) {
-      console.error('Ошибка запроса разрешения камеры:', error);
+  // При нажатии «Continue» на последнем экране
+  const onContinuePress = async () => {
+    // Убедимся, что хук уже отдал объект permission
+    if (!permission) {
+      Alert.alert('Подождите', 'Ещё не готов запрос прав');
+      return;
     }
+
+    // Если вообще не запрашивали раньше, попросим сейчас
+    if (!permission.granted) {
+      const result = await requestPermission(); 
+      // result — новый объект { granted: boolean, expires, scope }
+      if (!result.granted) {
+        Alert.alert(
+          'Доступ к камере отклонён',
+          'Чтобы приложение работало, нужна камера.'
+        );
+      }
+    }
+    // В любом случае переходим в Main
     navigation.replace('Main');
   };
 
-  // Обновляем currentIndex по завершении анимации перелистывания
-  const handleMomentumScrollEnd = (event) => {
-    const index = Math.round(event.nativeEvent.contentOffset.x / width);
-    setCurrentIndex(index);
+  const handleMomentumScrollEnd = event => {
+    const idx = Math.round(event.nativeEvent.contentOffset.x / width);
+    setCurrentIndex(idx);
   };
 
-  // Если зашли на слайд 4 (индекс 3) — через 3 секунды показываем крестик
   useEffect(() => {
     if (currentIndex === 3) {
       setShowClose(false);
-      const timerId = setTimeout(() => {
-        setShowClose(true);
-      }, 3000);
-      return () => clearTimeout(timerId);
+      const t = setTimeout(() => setShowClose(true), 3000);
+      return () => clearTimeout(t);
     } else {
       setShowClose(false);
     }
   }, [currentIndex]);
 
-  // Преобразуем scrollX так, чтобы пропустить неотображаемый слайд (индекс 3) в page control.
-  // При переходе: слайд 0 -> значение 0, слайд 1 -> 1, слайд 2 и 3 -> 2, слайд 4 -> 3.
   const pageScrollX = scrollX.interpolate({
-    inputRange: [0, width, 2 * width, 3 * width, 4 * width],
-    outputRange: [0, 1, 2, 2, 3],
+    inputRange: [0, width, 2*width, 3*width, 4*width],
+    outputRange: [0,1,2,2,3]
   });
 
   return (
@@ -80,7 +79,7 @@ export default function Onboarding() {
         ref={scrollViewRef}
         horizontal
         pagingEnabled
-        scrollEnabled={false}  // Отключаем перелистывание свайпом
+        scrollEnabled={false}
         showsHorizontalScrollIndicator={false}
         style={styles.scrollView}
         onScroll={Animated.event(
@@ -287,11 +286,11 @@ export default function Onboarding() {
                     For the application to work correctly, we need access to your device's camera.
                   </Text>
                   <TouchableOpacity
-                    style={styles.continueButton3}
-                    onPress={requestCameraPermission}
-                  >
-                    <Text style={styles.continueButtonText}>Continue</Text>
-                  </TouchableOpacity>
+                  style={styles.continueButton3}
+                  onPress={onContinuePress}
+                >
+                  <Text style={styles.continueButtonText}>Continue</Text>
+                </TouchableOpacity>
                 </View>
               </View>
             </View>

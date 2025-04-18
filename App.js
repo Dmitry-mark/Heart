@@ -4,6 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import StartScreen from './screens/StartScreen';
 import Main from './screens/Main';
+import Pulse from './screens/Pulse';
 
 const Stack = createStackNavigator();
 
@@ -19,6 +20,11 @@ function App() {
           <Stack.Screen 
             name="Main" 
             component={Main} 
+            options={{ headerShown: false }} 
+          />
+          <Stack.Screen 
+            name="Pulse" 
+            component={Pulse} 
             options={{ headerShown: false }} 
           />
         </Stack.Navigator>

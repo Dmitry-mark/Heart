@@ -42,7 +42,7 @@ const chartConfig = {
   labelColor: () => '#aaa',
   propsForBackgroundLines: { strokeWidth: 1, stroke: '#eee' },
 };
-export default function Main() {
+export default function Main({ navigation })  {
   const [selected, setSelected] = useState(2);
   const cardWidth  = width - CARD_MARGIN * 2;
   const innerWidth = cardWidth - CARD_PADDING * 2;
@@ -64,7 +64,7 @@ export default function Main() {
 
   return (
     <SafeAreaView style={styles.safe}>
-    <ScrollView contentContainerStyle={{ paddingTop: CARD_PADDING, paddingBottom: 40 }}>
+    <ScrollView contentContainerStyle={{ paddingTop: CARD_PADDING, paddingBottom: 80 }}>
       {/* TOP HEADER */}
       <View style={styles.topHeader}>
         <Text style={styles.topHeaderTitle}>Favorite Heart Monitor</Text>
@@ -197,7 +197,49 @@ export default function Main() {
             </View>
           </View>
         </View>
+       {/* STATISTICS NAV CARD */}
+       <TouchableOpacity style={[styles.card, styles.statsNavCard]}>
+          <View style={styles.statsNavContent}>
+            <Image
+              source={require('../assets/Main/stats.png')}
+              style={styles.statsNavIcon}
+            />
+            <View style={styles.statsNavText}>
+              <Text style={styles.statsNavTitle}>Your statistics</Text>
+              <Text style={styles.statsNavSubtitle}>All your statistics in one place</Text>
+            </View>
+            <Image
+              source={require('../assets/Main/arrow.png')}
+              style={styles.statsNavArrow}
+            />
+          </View>
+        </TouchableOpacity>
       </ScrollView>
+
+       {/* BOTTOM NAVIGATION */}
+       <View style={styles.navBar}>
+        <TouchableOpacity>
+          <Image
+            source={require('../assets/Main/insights.png')}
+            style={styles.navIcon}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+     style={styles.navCenterButton}
+     onPress={() => navigation.navigate('Pulse')}
+    >
+          <Image
+            source={require('../assets/Main/Heart.png')}
+            style={styles.navCenterIcon}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity>
+          <Image
+            source={require('../assets/Main/settings.png')}
+            style={styles.navIcon}
+          />
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -336,5 +378,60 @@ const styles = StyleSheet.create({
   legendText: {
     fontSize: 12,
     color: '#555',
+  },
+   // STATISTICS NAV CARD
+   statsNavCard: { marginTop: 24, paddingVertical: 0 },
+   statsNavContent: { flexDirection: 'row', alignItems: 'center', padding: CARD_PADDING },
+   statsNavIcon: { width: 24, height: 30, tintColor: '#FF4656', bottom: '20%' },
+   statsNavText: { flex: 1, marginLeft: 12,},
+   statsNavTitle: { fontSize: 16, fontWeight: '600', color: '#FF4656' },
+   statsNavSubtitle: { fontSize: 12, color: '#888', marginTop: 4 },
+   statsNavArrow: { width: 16, height: 16, tintColor: '#333' },
+ 
+   navBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '12%',                          // фиксированная высота
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 25,             // только верхние углы
+    borderTopRightRadius: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 10,
+    paddingBottom: 10,                   // чуть отступ снизу
+  },
+  navIcon: {
+    width: 24,
+    height: 24,
+    tintColor: '#888',                   // неактивный серый
+  },
+  navIconActive: {
+    tintColor: '#FF4656',                // активный — розовый
+  },
+  navCenterButton: {
+    width: 70,
+    height: 70,
+    borderRadius: 20,                    
+    backgroundColor: '#fff',             // белый фон
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -5,                      // «зависает» над панелью
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 12,
+  },
+  navCenterIcon: {
+    width: 28,
+    height: 28,
+    tintColor: '#FF4656',                // иконка — розовая
   },
 });
