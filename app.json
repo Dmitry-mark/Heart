@@ -14,9 +14,7 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "infoPlist": {
-        "NSCameraUsageDescription": "Приложению требуется доступ к камере для корректной работы."
-      }
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
