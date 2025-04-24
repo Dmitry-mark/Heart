@@ -1,11 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Image, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, SafeAreaView, Image, Alert,  ImageBackground } from 'react-native';
 import { CameraView, Camera } from 'expo-camera';
 import { StatusBar } from 'expo-status-bar';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as MediaLibrary from 'expo-media-library';
 import Slider from '@react-native-community/slider';
 import { useNavigation } from '@react-navigation/native';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const CIRCLE_SIZE = SCREEN_WIDTH * 0.6;     
+const UP_OFFSET = SCREEN_HEIGHT * 0.05;      
+const HEART_SIZE = SCREEN_WIDTH * 0.65;      
+const BOTTOM_OFFSET = SCREEN_HEIGHT * 0.1; 
 
 export default function App() {
   const [cameraPermission, setCameraPermission] = useState();
@@ -100,68 +106,119 @@ export default function App() {
   }
 
   return (
-    <View style={styles.container}>
-      <CameraView
-        style={styles.camera}
-        facing={facing}
-        ref={cameraRef}
-        flash={flashMode}
-        mode={cameraMode}
-        zoom={zoom}
-      >
-        <Slider
-          style={styles.slider}
-          minimumValue={0}
-          maximumValue={1}
-          value={zoom}
-          onValueChange={setZoom}
-        />
-        <View style={styles.topControls}>
-          <TouchableOpacity style={styles.controlBtn} onPress={toggleCameraFacing}>
-            <Ionicons name="camera-reverse-outline" size={24} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.controlBtn} onPress={() => setCameraMode('picture')}>
-            <Ionicons name="camera-outline" size={24} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.controlBtn} onPress={() => setCameraMode('video')}>
-            <Ionicons name="videocam-outline" size={24} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.controlBtn} onPress={toggleFlash}>
-            <Ionicons name={flashMode === 'on' ? 'flash-outline' : 'flash-off-outline'} size={24} color="white" />
-          </TouchableOpacity>
+    <SafeAreaView style={styles.container}>
+      {/* Header with back arrow and title */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.navigate('Main')} style={styles.backBtn}>
+          <Image source={require('../assets/Pulse/arrow.png')} style={styles.backIcon} />
+        </TouchableOpacity>
+        <Text style={styles.title}>Measurement</Text>
+      </View>
+
+      {/* Grid background with camera circle */}
+      <ImageBackground source={require('../assets/Pulse/grid.png')} style={styles.gridBackground}>
+        <View style={styles.cameraCircle}>
+          <CameraView
+            style={styles.camera}
+          >
+          </CameraView>
         </View>
-        <View style={styles.shutterContainer}>
-          {cameraMode === 'picture' ? (
-            <TouchableOpacity onPress={takePicture} style={styles.shutterBtn}>
-              <Ionicons name="aperture-outline" size={48} color="white" />
-            </TouchableOpacity>
-          ) : recording ? (
-            <TouchableOpacity onPress={stopRecording} style={styles.shutterBtn}>
-              <Ionicons name="stop-circle-outline" size={48} color="red" />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity onPress={startRecording} style={styles.shutterBtn}>
-              <Ionicons name="play-circle-outline" size={48} color="white" />
-            </TouchableOpacity>
-          )}
-        </View>
-      </CameraView>
+      </ImageBackground>
+
+      {/* Instructional text */}
+      <View style={styles.textContainer}>
+        <Text style={styles.mainText}>Let's Start to Measure</Text>
+        <Text style={styles.subText}>Place your finger on the camera</Text>
+      </View>
+
+      {/* Heart button */}
+      <View style={styles.footer}>
+        <TouchableOpacity onPress={takePicture} activeOpacity={0.7}>
+          <Image
+            source={require('../assets/Pulse/heart.png')}
+            style={styles.heart}
+          />
+        </TouchableOpacity>
+      </View>
+
       <StatusBar style="auto" />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  camera: { flex: 1 },
-  slider: { width: '100%', height: 40, position: 'absolute', top: '75%' },
-  topControls: { flexDirection: 'row', justifyContent: 'space-around', backgroundColor: 'transparent', margin: 20 },
-  controlBtn: { alignSelf: 'flex-end', padding: 10 },
-  shutterContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', margin: 20 },
-  shutterBtn: { alignItems: 'center' },
-  imageContainer: { flex: 1 },
-  preview: { flex: 1, width: '100%' },
-  btnContainer: { flexDirection: 'row', justifyContent: 'space-evenly', backgroundColor: '#fff' },
-  btn: { padding: 10 },
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    height: 56,
+  },
+  backBtn: {
+    padding: 8,
+  },
+  backIcon: {
+    width: 35,
+    height: 35,
+    resizeMode: 'contain',
+  },
+  title: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 22,
+    fontWeight: '500',
+    right: '8%'
+  },
+  gridBackground: {
+    flex: 0,
+    width: '100%',
+    height: CIRCLE_SIZE + UP_OFFSET,
+    alignItems: 'center',      // по центру по горизонтали
+    justifyContent: 'center',  // центруем по вертикали
+  },
+  cameraCircle: {
+    width: CIRCLE_SIZE,
+    height: CIRCLE_SIZE,
+    borderRadius: CIRCLE_SIZE / 2,
+    overflow: 'hidden',
+    backgroundColor: '#000',
+  },
+  camera: {
+    width: '100%',
+    height: '100%',
+  },
+  textContainer: {
+    alignItems: 'center',
+    marginTop: 24,            // больше отступ от камеры
+    paddingHorizontal: 16,
+  },
+  mainText: {
+    fontSize: 22,
+    fontWeight: '600',
+  },
+  subText: {
+    fontSize: 18,
+    color: '#888',
+    marginTop: 8,
+  },
+  footer: {
+    position: 'absolute',
+    bottom: BOTTOM_OFFSET,
+    width: '100%',
+    alignItems: 'center',
+  },
+  heart: {
+    width: HEART_SIZE,
+    height: HEART_SIZE,
+    resizeMode: 'contain',
+  },
 });
+
