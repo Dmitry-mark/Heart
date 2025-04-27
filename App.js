@@ -11,7 +11,12 @@ const Stack = createStackNavigator();
 function App() {
   return (
       <NavigationContainer>
-        <Stack.Navigator initialRouteName="StartScreen">
+        <Stack.Navigator initialRouteName="Pulse">
+          <Stack.Screen 
+            name="Pulse" 
+            component={Pulse} 
+            options={{ headerShown: false }} 
+          />
           <Stack.Screen 
             name="StartScreen" 
             component={StartScreen} 
@@ -20,11 +25,6 @@ function App() {
           <Stack.Screen 
             name="Main" 
             component={Main} 
-            options={{ headerShown: false }} 
-          />
-          <Stack.Screen 
-            name="Pulse" 
-            component={Pulse} 
             options={{ headerShown: false }} 
           />
         </Stack.Navigator>
