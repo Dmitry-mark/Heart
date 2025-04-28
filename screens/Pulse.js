@@ -10,10 +10,7 @@ import {
   Alert,
   ImageBackground,
 } from 'react-native';
-import {
-  CameraView,
-  useCameraPermissions,
-} from 'expo-camera';
+import { CameraView } from 'expo-camera';
 import { StatusBar } from 'expo-status-bar';
 import * as jpeg from 'jpeg-js';
 import { Buffer } from 'buffer';
@@ -32,115 +29,160 @@ const MIN_PEAK_INTERVAL = 300;
 
 export default function PulseScreen() {
   const navigation = useNavigation();
-  const [permission, requestPermission] = useCameraPermissions();
-  const [torchOn, setTorchOn] = useState(false);
-  const [measuring, setMeasuring] = useState(false);
+  const cameraRef = useRef(null);
+
+  // Permission and camera state
+  const [permission, setPermission] = useState(null);
   const [cameraReady, setCameraReady] = useState(false);
+  const [pictureSize, setPictureSize] = useState(null);
+
+  // Torch workaround state
+  const [torchEnabled, setTorchEnabled] = useState(false);
+
+  // Measurement state
+  const [measuring, setMeasuring] = useState(false);
   const [pulsation, setPulsation] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [result, setResult] = useState(null);
   const [debugHistory, setDebugHistory] = useState([]);
 
-  const cameraRef = useRef(null);
   const redBuffer = useRef([]);
   const beats = useRef([]);
   const lastMeans = useRef([]);
-  const startTimeRef = useRef(null);
+  const startTimeRef = useRef(0);
 
-  // Запрос прав на камеру
+  // Request camera permissions
   useEffect(() => {
-    if (!permission) return;
-    if (!permission.granted) requestPermission();
-  }, [permission, requestPermission]);
+    (async () => {
+      console.log('Requesting camera permissions');
+      try {
+        const perm = await require('expo-camera').Camera.requestCameraPermissionsAsync();
+        console.log('Permission status:', perm.status);
+        setPermission(perm);
+      } catch (e) {
+        console.error('Permission error:', e);
+      }
+    })();
+  }, []);
 
-  // Основной цикл измерения пульса
+  // Fetch available picture sizes once camera ready
   useEffect(() => {
-    let timer;
+    if (cameraReady && cameraRef.current && !pictureSize) {
+      (async () => {
+        console.log('CameraView ready, fetching picture sizes');
+        try {
+          const sizes = await cameraRef.current.getAvailablePictureSizesAsync('4:3');
+          console.log('Available picture sizes:', sizes);
+          setPictureSize(sizes[0]);
+        } catch (e) {
+          console.error('Error getting picture sizes:', e);
+        }
+      })();
+    }
+  }, [cameraReady]);
+
+  // Torch workaround: toggle off then on to engage
+  useEffect(() => {
+    if (measuring) {
+      console.log('Enabling torch workaround');
+      setTorchEnabled(false);
+      setTimeout(() => {
+        setTorchEnabled(true);
+        console.log('Torch enabled');
+      }, 100);
+    } else {
+      setTorchEnabled(false);
+      console.log('Torch disabled');
+    }
+  }, [measuring]);
+
+  // Measurement loop
+  useEffect(() => {
+    let active = true;
+
     const measureOnce = async () => {
-      console.log('measureOnce start', { cameraReady, measuring });
       if (!cameraReady) return;
       const now = Date.now();
-      const diff = now - (startTimeRef.current || now);
+      const diff = now - startTimeRef.current;
+      console.log('Elapsed ms:', diff);
       setElapsed(diff);
-
       try {
+        console.log('Taking picture');
         const photo = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.1, skipProcessing: true });
-        console.log('Photo taken', photo.base64?.length);
+        console.log('Picture taken, size:', photo.base64.length);
         const raw = jpeg.decode(Buffer.from(photo.base64, 'base64'));
-        const data = raw.data;
         let redSum = 0;
+        const data = raw.data;
         for (let i = 0; i < data.length; i += 4) redSum += data[i];
         const redMean = redSum / ((data.length / 4) * 255);
+        console.log('Red mean:', redMean);
 
-        setDebugHistory(h => {
-          const arr = [...h, Number(redMean.toFixed(2))];
-          return arr.length > BUFFER_LEN ? arr.slice(-BUFFER_LEN) : arr;
-        });
+        setDebugHistory(h => (arr => (arr.length > BUFFER_LEN ? arr.slice(-BUFFER_LEN) : arr))([...h, Number(redMean.toFixed(2))]));
 
         redBuffer.current.push(redMean);
         if (redBuffer.current.length > BUFFER_LEN) redBuffer.current.shift();
         const min = Math.min(...redBuffer.current);
         const max = Math.max(...redBuffer.current);
-        setPulsation((redMean - min) / (max - min || 1));
+        const pulse = (redMean - min) / (max - min || 1);
+        console.log('Pulsation ratio:', pulse);
+        setPulsation(pulse);
 
         lastMeans.current.push({ value: redMean, time: now });
         if (lastMeans.current.length > 3) lastMeans.current.shift();
         if (lastMeans.current.length === 3) {
           const [p0, p1, p2] = lastMeans.current;
-          if (p1.value > p0.value && p1.value > p2.value && now - (beats.current.slice(-1)[0] || 0) > MIN_PEAK_INTERVAL) {
+          const lastBeat = beats.current.slice(-1)[0] || 0;
+          if (p1.value > p0.value && p1.value > p2.value && now - lastBeat > MIN_PEAK_INTERVAL) {
             beats.current.push(now);
+            console.log('Beat detected at', now);
           }
         }
 
         if (diff >= MEASURE_WINDOW) {
-          clearInterval(timer);
           const bpm = Math.round(beats.current.length * (60 / (diff / 1000)));
+          console.log('Measurement complete, BPM:', bpm);
           setResult(bpm);
           setMeasuring(false);
-          setTorchOn(false);
+          setPulsation(0);
           Alert.alert('Результат', `Пульс: ${bpm} BPM`);
         }
       } catch (e) {
-        console.error('measure error', e);
+        console.error('Measure error:', e);
       }
     };
 
-    if (measuring && permission?.granted && cameraReady) {
-      console.log('start measuring');
+    const loop = async () => {
+      if (!active || !measuring) return;
+      await measureOnce();
+      if (active && measuring) setTimeout(loop, SAMPLE_INTERVAL);
+    };
+
+    if (measuring && permission?.status === 'granted' && cameraReady) {
+      console.log('Starting measurement');
+      startTimeRef.current = Date.now();
       beats.current = [];
       redBuffer.current = [];
       lastMeans.current = [];
-      setResult(null);
-      setPulsation(0);
       setElapsed(0);
-      startTimeRef.current = Date.now();
-
-      measureOnce();
-      timer = setInterval(measureOnce, SAMPLE_INTERVAL);
+      setPulsation(0);
+      setResult(null);
+      setDebugHistory([]);
+      loop();
     }
-    return () => clearInterval(timer);
+
+    return () => { active = false; };
   }, [measuring, permission, cameraReady]);
 
-  // Обработка нажатий: первый клик включает фонарь, второй — измерение
   const toggleMeasure = () => {
-    console.log('toggleMeasure', { torchOn, measuring });
-    if (!torchOn) {
-      setTorchOn(true);
-    } else if (!measuring) {
-      setMeasuring(true);
-    } else {
-      setMeasuring(false);
-      setTorchOn(false);
-      setDebugHistory([]);
-      setPulsation(0);
-      setElapsed(0);
-      setResult(null);
-    }
+    console.log('Toggling measure. Now measuring:', !measuring);
+    setMeasuring(m => !m);
   };
 
-  if (!permission || !permission.granted) {
+  if (!permission || permission.status !== 'granted') {
     return (
-      <View style={styles.center}><Text>Запрашиваем разрешения…</Text></View>
+      <View style={styles.center}>
+        <Text>Запрашиваем разрешения…</Text>
+      </View>
     );
   }
 
@@ -149,7 +191,7 @@ export default function PulseScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Image source={require('../assets/Pulse/arrow.png')} style={styles.backIcon} />
         </TouchableOpacity>
         <Text style={styles.title}>Measurement</Text>
@@ -161,14 +203,16 @@ export default function PulseScreen() {
             ref={cameraRef}
             style={styles.camera}
             facing="back"
-            enableTorch={torchOn}
+            enableTorch={torchEnabled}
+            pictureSize={pictureSize}
+            contentFit="cover"
             onCameraReady={() => {
-              console.log('onCameraReady');
+              console.log('CameraView ready');
               setCameraReady(true);
             }}
-            onMountError={e => console.error('Camera mount error', e)}
+            onMountError={e => console.error('CameraView mount error:', e)}
           />
-          <View style={[styles.pulseOverlay, { opacity: pulsation }]} />
+          {measuring && <View style={[styles.pulseOverlay, { opacity: pulsation }]} />}
         </View>
         <View style={styles.progressContainer}>
           <View style={[styles.progressFill, { width: progressWidth }]} />
@@ -201,6 +245,7 @@ export default function PulseScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
   header: { flexDirection: 'row', alignItems: 'center', padding: 16, height: 56 },
   backBtn: { padding: 8 },
   backIcon: { width: 35, height: 35, resizeMode: 'contain' },
